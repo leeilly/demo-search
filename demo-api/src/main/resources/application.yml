@@ -19,7 +19,8 @@ spring:
 
 #elasticsearch
 elasticsearch:
-  dic:
-    path: /Users/kjlee/tmp
-  host: 15.164.28.71
-  port: 9200
+  host: dev.search.pulmuone.info
+  #dic:
+  #  path: /Users/kjlee/tmp
+
+
