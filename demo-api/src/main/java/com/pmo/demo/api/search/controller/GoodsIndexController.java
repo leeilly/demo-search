@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.IOException;
+
 @RestController
 @RequestMapping(value = "/v1/index")
 public class GoodsIndexController {
@@ -25,6 +27,12 @@ public class GoodsIndexController {
     @GetMapping("/bulk/goods-ac")
     public ApiResult indexAutoComplete() throws Exception {
         return ApiResult.ok(goodsIndexService.bulkAutoComplete().getStatus());
+    }
+
+    @ApiOperation(value="카테고리부스팅 전체 색인", notes = "카테고리부스팅 전체 색인")
+    @GetMapping("/bulk/category-boost")
+    public ApiResult indexCategoryBoostMap() throws IOException {
+        return ApiResult.ok(goodsIndexService.bulkCategoryBoostMap().getStatus());
     }
 
 }

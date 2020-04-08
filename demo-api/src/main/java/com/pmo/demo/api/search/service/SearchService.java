@@ -10,12 +10,17 @@ import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.common.text.Text;
+import org.elasticsearch.search.SearchHit;
+import org.elasticsearch.search.SearchHits;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.elasticsearch.search.fetch.subphase.highlight.HighlightField;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.annotation.PreDestroy;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 public class SearchService {
@@ -33,7 +38,6 @@ public class SearchService {
         searchRequest.indices(index);
         searchRequest.source(query);
         SearchResponse searchResponse = restHighLevelClient.search(searchRequest, RequestOptions.DEFAULT);
-
         return SearchResult.builder()
                            .count(searchResponse.getHits().getTotalHits().value)
                            .document(convertResultList(searchResponse, valueType))
@@ -41,13 +45,20 @@ public class SearchService {
     }
 
 
+    @SuppressWarnings("unchecked")
     private static List convertResultList(SearchResponse response, Class valueType) {
         int initialSize = (int) (response.getHits().getTotalHits().value * 1.3);
         List list = new ArrayList<>(initialSize);
+
         response.getHits().forEach(
                 hit -> {
                     try {
-                        list.add(MAPPER.readValue(hit.getSourceAsString(), valueType));
+                        if( !hit.getHighlightFields().isEmpty() ) {
+                            hit.getSourceAsMap().put("highlight", hit.getHighlightFields().get("goods_name").getFragments()[0].string());
+                        }
+                        String sourceMapToString = MAPPER.writeValueAsString(hit.getSourceAsMap());
+                        list.add(MAPPER.readValue(sourceMapToString, valueType));
+
                     } catch (JsonProcessingException e) {
                         e.printStackTrace();
                     }

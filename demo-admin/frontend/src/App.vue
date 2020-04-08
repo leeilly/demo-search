@@ -1,18 +1,17 @@
 <template>
   <div id="app">
-    <img alt="Vue logo" src="./assets/logo.png">
-    <HelloWorld msg="Welcome to Your Vue.js App"/>
+    <Search msg="Hi"/>
   </div>
 </template>
 
 <script>
-import HelloWorld from './components/HelloWorld.vue'
+import Search from './components/Search.vue'
 import request from "request"
 
 export default {
   name: 'App',
   components: {
-    HelloWorld
+    Search
   },
   mounted(){
     request('http://localhost:8081/api/hello', function (error, response, body) {
@@ -23,6 +22,8 @@ export default {
     });
   }
 }
+
+
 </script>
 
 <style>

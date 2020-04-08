@@ -11,10 +11,9 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @Slf4j
 public class ElasticsearchConfig {
+
     @Value("${elasticsearch.host}")
     private String host;
-    @Value("${elasticsearch.port}")
-    private int port;
 
     @Bean(destroyMethod = "close")
     public RestHighLevelClient restHighLevelClient() {

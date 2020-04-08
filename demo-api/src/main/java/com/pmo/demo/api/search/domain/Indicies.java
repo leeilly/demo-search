@@ -3,7 +3,8 @@ package com.pmo.demo.api.search.domain;
 public enum Indicies {
 
     GOODS("goods", new String[]{"goods_name.nori_discard", "category_name", "brand_name"}),
-    GOODS_AC("goods_ac", new String[]{} );
+    GOODS_AC("goods_ac", new String[]{} ),
+    CATEGORY_BOOST("category_boost", new String[]{});
 
     private final String alias;
     private String[] multiMatchFileds;

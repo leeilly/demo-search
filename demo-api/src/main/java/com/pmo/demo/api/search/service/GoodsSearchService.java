@@ -5,11 +5,17 @@ import com.pmo.demo.api.search.dto.GoodsSearchRequestDto;
 import com.pmo.demo.api.search.parser.KoreanJamoParser;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.elasticsearch.index.query.*;
+import org.elasticsearch.index.query.BoolQueryBuilder;
+import org.elasticsearch.index.query.Operator;
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.query.QueryBuilders;
 import org.elasticsearch.search.builder.SearchSourceBuilder;
+import org.elasticsearch.search.fetch.subphase.highlight.HighlightBuilder;
 import org.springframework.stereotype.Service;
 
-import static org.elasticsearch.index.query.QueryBuilders.matchQuery;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @Slf4j
@@ -19,62 +25,74 @@ public class GoodsSearchService extends SearchService {
         return super.search(Indicies.GOODS.alias(), makeQuery(searchRequestDTO), GoodsDocument.class);
     }
 
-    private SearchSourceBuilder makeQuery(GoodsSearchRequestDto requestDTO) {
+    private SearchSourceBuilder makeQuery(GoodsSearchRequestDto requestDTO) throws Exception {
         BoolQueryBuilder query = QueryBuilders.boolQuery();
 
-        if( StringUtils.isNotEmpty(requestDTO.getKeyword()) ) {
+        if (StringUtils.isNotEmpty(requestDTO.getKeyword())) {
             QueryBuilder multiKeywordQuery = QueryBuilders.multiMatchQuery(requestDTO.getKeyword(), Indicies.GOODS.multiMatchFileds()).operator(Operator.AND);
             query.must(multiKeywordQuery);
         }
 
-        //카테고리 코드
-        if ( StringUtils.isNotEmpty(requestDTO.getCategoryCode()) ) {
-            QueryBuilder categoryQuery = matchQuery("category_code", requestDTO.getCategoryCode()).operator(Operator.AND);
-            query.must(categoryQuery);
-        }
-
-        //성분
-        if (  StringUtils.isNotEmpty(requestDTO.getIngredients()) ) {
-            QueryBuilder categoryQuery = matchQuery("ingredients", requestDTO.getIngredients()).operator(Operator.AND);
-            query.must(categoryQuery);
-        }
-
-        //kcal
-        if ( StringUtils.isNotEmpty(requestDTO.getKcalRangeCode()) ) {
-            RangeQueryBuilder kcalQuery = KcalRangeCode.valueOf(requestDTO.getKcalRangeCode()).getQuery();
-            query.must(kcalQuery);
-        }
+        //fixme: refactor category boosting
+        query = appendCategoryBoostQuery(query, requestDTO);
 
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(query);
 
-        log.info("query: {}", searchSourceBuilder.toString());
+        //log.info("query: {}", searchSourceBuilder.toString());
 
         return searchSourceBuilder;
     }
 
-    public SearchResult searchAutoComplete(GoodsSearchRequestDto requestDTO) throws Exception {
-        return super.search(Indicies.GOODS_AC.alias(), makeQueryForRecommend(requestDTO), GoodsRecommendDocument.class);
+    private BoolQueryBuilder appendCategoryBoostQuery(BoolQueryBuilder query, GoodsSearchRequestDto requestDTO) throws Exception {
+        SearchResult boostSearchResult = super.search(Indicies.CATEGORY_BOOST.alias(), makeQueryForCategoryBoost(requestDTO.getKeyword()), CategoryBoostDocument.class );
+
+        Map<String, Integer> map = new HashMap<>();
+        List<CategoryBoostDocument> list = boostSearchResult.getDocument();
+        list.stream().forEach(b -> map.put(b.getCategoryCode(), b.getScore()));
+
+        for( String categoryCode : map.keySet() ){
+            QueryBuilder boostQuery = QueryBuilders.matchQuery("category_code", categoryCode).operator(Operator.AND).boost(map.get(categoryCode));
+            query.should(boostQuery);
+        }
+
+        return query;
     }
 
-    private SearchSourceBuilder makeQueryForRecommend(GoodsSearchRequestDto requestDTO) {
+    private SearchSourceBuilder makeQueryForCategoryBoost(String keyword) {
         BoolQueryBuilder query = QueryBuilders.boolQuery();
+        QueryBuilder keywordQuery = QueryBuilders.matchQuery("keyword", keyword).operator(Operator.AND);
+        query.must(keywordQuery);
+        SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
+        searchSourceBuilder.query(query);
+        return searchSourceBuilder;
+    }
+
+
+    public SearchResult searchAutoComplete(GoodsSearchRequestDto requestDTO) throws Exception {
+        return super.search(Indicies.GOODS_AC.alias(), makeQueryForAutoComplete(requestDTO), GoodsRecommendDocument.class);
+    }
+
+    private SearchSourceBuilder makeQueryForAutoComplete(GoodsSearchRequestDto requestDTO) {
 
         KoreanJamoParser parser = new KoreanJamoParser();
-        QueryBuilder termQueryJamo = QueryBuilders.matchQuery("name_jamo", parser.parse(requestDTO.getKeyword())).operator(Operator.AND);
-        query.must(termQueryJamo);
+        BoolQueryBuilder query = QueryBuilders.boolQuery();
 
-//        if("any".equals(requestDTO.getMatchingType())){
-//            query.should(termQueryEdgeBack);
-//
-//        }else if("prefix".equals(requestDTO.getMatchingType())){
-//            query.minimumShouldMatch(2);
-//        }
+        QueryBuilder termQueryNgram = QueryBuilders.termQuery("goods_name", requestDTO.getKeyword());
+        QueryBuilder matchQueryJamo = QueryBuilders.matchPhrasePrefixQuery("goods_name_jamo", parser.parse(requestDTO.getKeyword()));
+
+        query.should(termQueryNgram);
+        query.should(matchQueryJamo);
+        query.minimumShouldMatch(1);
 
         SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
         searchSourceBuilder.query(query);
+        searchSourceBuilder.highlighter(new HighlightBuilder().field("goods_name"));
 
         log.info(searchSourceBuilder.toString());
         return searchSourceBuilder;
     }
+
+
+
 }

@@ -1,10 +1,8 @@
 package com.pmo.demo.api.search.domain;
 
 import lombok.Getter;
-import lombok.Setter;
 
 @Getter
-@Setter
 public class GoodsDocument {
     private Long goodsNo;
     private String goodsName;

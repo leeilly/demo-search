@@ -11,12 +11,13 @@ public class GoodsRecommendDocument {
 
     private Long goodsNo;
     private String goodsName;
-    private String nameJamo;
+    private String goodsNameJamo;
+    private String highlight;
 
     @Builder
     public GoodsRecommendDocument(Long goodsNo, String goodsName){
         this.goodsNo = goodsNo;
         this.goodsName = goodsName;
-        this.nameJamo = new KoreanJamoParser().parse(goodsName);
+        this.goodsNameJamo = new KoreanJamoParser().parse(goodsName);
     }
 }
