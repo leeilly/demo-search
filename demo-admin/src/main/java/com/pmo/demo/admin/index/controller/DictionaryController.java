@@ -2,17 +2,16 @@ package com.pmo.demo.admin.index.controller;
 
 import com.pmo.demo.admin.index.domain.Synonym;
 import com.pmo.demo.admin.index.domain.SynonymRepository;
+import com.pmo.demo.admin.index.dto.SynonymAddRequestDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @Slf4j
-@Controller
+@RestController
 @RequestMapping("/dic")
 public class DictionaryController {
 
@@ -20,12 +19,13 @@ public class DictionaryController {
     SynonymRepository synonymRepository;
 
     @GetMapping("/synonym")
-    public String index(Model model) {
+    public List<Synonym> getSynonymList() {
+        return synonymRepository.findAll();
+    }
 
-        List<Synonym> synonymList = synonymRepository.findAll();
-        model.addAttribute("synonymList", synonymList);
-
-        return "/dictionary/synonym";
+    @PostMapping("/synonym")
+    public Synonym add(@RequestBody final SynonymAddRequestDto dto) {
+        return synonymRepository.save(dto.toEntity());
     }
 
 
